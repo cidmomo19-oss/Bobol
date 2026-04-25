@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Pastelink Auto Unpacker</title>
+    <style>
+        body { font-family: sans-serif; display: flex; justify-content: center; padding: 50px; background: #1a1a1a; color: white; }
+        .box { background: #2a2a2a; padding: 20px; border-radius: 8px; width: 100%; max-width: 500px; }
+        input { width: 100%; padding: 10px; margin: 10px 0; box-sizing: border-box; }
+        button { width: 100%; padding: 10px; background: #007bff; color: white; border: none; cursor: pointer; }
+        pre { background: #000; padding: 10px; margin-top: 20px; color: #0f0; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <h3>Pastelink Unpacker</h3>
+        <input type="text" id="urlInput" placeholder="https://pastelink.asia/alosSc">
+        <button onclick="unpack()">BONGKAR SEKARANG</button>
+        <pre id="result">Hasil akan muncul di sini...</pre>
+    </div>
+
+    <script>
+        async function unpack() {
+            const url = document.getElementById('urlInput').value;
+            const resBox = document.getElementById('result');
+            resBox.innerText = "Loading...";
+
+            try {
+                // Memanggil function api yang kita buat tadi
+                const response = await fetch(`/api/unpack?url=${encodeURIComponent(url)}`);
+                const data = await response.json();
+                resBox.innerText = JSON.stringify(data, null, 2);
+            } catch (err) {
+                resBox.innerText = "Error: " + err.message;
+            }
+        }
+    </script>
+</body>
+</html>
