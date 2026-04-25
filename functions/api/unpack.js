@@ -3,49 +3,57 @@ export async function onRequest(context) {
   const targetUrl = searchParams.get('url');
 
   if (!targetUrl) {
-    return new Response(JSON.stringify({ error: "URL mana bang?" }), { 
-        status: 400, headers: { "Content-Type": "application/json" } 
-    });
+    return new Response(JSON.stringify({ error: "URL mana?" }), { status: 400 });
   }
 
   try {
     const response = await fetch(targetUrl, {
-      headers: { 
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36",
-        "Accept": "text/html"
-      }
+      headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/110.0.0.0" }
     });
-
-    if (!response.ok) throw new Error("Gagal ambil halaman Pastelink. Status: " + response.status);
-
     const html = await response.text();
+
+    // Regex untuk ambil isi var setup
     const regex = /var setup = "(.*?)";/;
     const match = html.match(regex);
 
     if (match && match[1]) {
-      const setupStr = match[1].replace("#pas?te=link&", "");
+      let setupStr = match[1];
+      
+      // PERBAIKAN DI SINI: Bersihkan semua prefix sampai ketemu ampersand pertama
+      // Karena formatnya: #pas?te=link&t=...
+      if (setupStr.includes('&')) {
+          setupStr = setupStr.substring(setupStr.indexOf('&') + 1);
+      }
+
       const params = new URLSearchParams(setupStr);
 
       const decodeB64 = (str) => {
         if (!str) return null;
-        try { return decodeURIComponent(atob(str)); } catch (e) { return "Gagal Decode"; }
+        try {
+          // Base64 decode -> URL Decode
+          return decodeURIComponent(atob(str));
+        } catch (e) {
+          try { return atob(str); } catch (e2) { return str; }
+        }
       };
 
-      return new Response(JSON.stringify({
+      // Ambil data berdasarkan parameter Pastelink
+      const result = {
         success: true,
-        link: decodeB64(params.get('c')),
+        link: decodeB64(params.get('c')), // 'c' adalah content/link mentah
         pw: params.get('pw') ? atob(params.get('pw')) : "Gak Ada",
-        date: decodeB64(params.get('t'))
-      }), { headers: { "Content-Type": "application/json" } });
+        date: decodeB64(params.get('t')), // 't' adalah tanggal
+        name: params.get('n') || "Anonymous" // 'n' adalah nama pembuat
+      };
 
-    } else {
-      return new Response(JSON.stringify({ error: "Data 'setup' ga ketemu. Linknya bener ga?" }), { 
-        status: 404, headers: { "Content-Type": "application/json" } 
+      return new Response(JSON.stringify(result, null, 2), {
+        headers: { "Content-Type": "application/json" }
       });
     }
+    
+    return new Response(JSON.stringify({ error: "Gagal bongkar. Script setup gak ketemu." }), { status: 404 });
+
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), { 
-        status: 500, headers: { "Content-Type": "application/json" } 
-    });
+    return new Response(JSON.stringify({ error: err.message }), { status: 500 });
   }
 }
