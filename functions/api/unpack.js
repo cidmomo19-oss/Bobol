@@ -3,16 +3,22 @@ export async function onRequest(context) {
   const targetUrl = searchParams.get('url');
 
   if (!targetUrl) {
-    return new Response(JSON.stringify({ error: "URL param is missing" }), { status: 400 });
+    return new Response(JSON.stringify({ error: "URL mana bang?" }), { 
+        status: 400, headers: { "Content-Type": "application/json" } 
+    });
   }
 
   try {
     const response = await fetch(targetUrl, {
-      headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/110.0.0.0 Safari/537.36" }
+      headers: { 
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36",
+        "Accept": "text/html"
+      }
     });
-    const html = await response.text();
 
-    // Cari variabel setup di dalam script
+    if (!response.ok) throw new Error("Gagal ambil halaman Pastelink. Status: " + response.status);
+
+    const html = await response.text();
     const regex = /var setup = "(.*?)";/;
     const match = html.match(regex);
 
@@ -22,22 +28,24 @@ export async function onRequest(context) {
 
       const decodeB64 = (str) => {
         if (!str) return null;
-        try { return decodeURIComponent(atob(str)); } catch (e) { return "Error"; }
+        try { return decodeURIComponent(atob(str)); } catch (e) { return "Gagal Decode"; }
       };
 
-      const result = {
+      return new Response(JSON.stringify({
         success: true,
-        content_link: decodeB64(params.get('c')),
-        password: params.get('pw') ? atob(params.get('pw')) : "No Password",
-        date: decodeB64(params.get('t')),
-      };
+        link: decodeB64(params.get('c')),
+        pw: params.get('pw') ? atob(params.get('pw')) : "Gak Ada",
+        date: decodeB64(params.get('t'))
+      }), { headers: { "Content-Type": "application/json" } });
 
-      return new Response(JSON.stringify(result), {
-        headers: { "Content-Type": "application/json" }
+    } else {
+      return new Response(JSON.stringify({ error: "Data 'setup' ga ketemu. Linknya bener ga?" }), { 
+        status: 404, headers: { "Content-Type": "application/json" } 
       });
     }
-    return new Response(JSON.stringify({ error: "Data not found" }), { status: 404 });
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+    return new Response(JSON.stringify({ error: err.message }), { 
+        status: 500, headers: { "Content-Type": "application/json" } 
+    });
   }
 }
